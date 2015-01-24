@@ -1,0 +1,119 @@
+```{r echo=FALSE}
+library(caret)
+library(AppliedPredictiveModeling)
+library(kernlab)
+library('e1071')
+setwd("C:\\Sandbox\\coursera\\machine-learning")
+```
+
+---
+title: "Predicting the type of movement based on accelerator data"
+output: html_document
+---
+
+## executive summary 
+
+This report presents the build-up of a model based on a training set of several person exercising to predict the type of movement they are doing based on accelerometer data. The data used in this analysis is from groupware project on Human Activity Recognition [1]. The outcome is the column "classe" which is a factor of 5 levels, from A to E corresponding to a type of activity.
+The model chosen for this prediction was a CARE tree prediction without preprocessing of the data except some simple data cleaning. The accuracy of the model was around 50% on a subset of the training set for testing.
+
+## Data exploration and data cleaning
+
+The objective is to predict the "classe"" parameter based on the other metrics.  Looking at the data set, we have 160 columns, any of them are are statistically summary ofmore detailed parametrics taking during a time widow. 
+
+```{r}
+
+training <- read.csv("pml-training.csv",header = TRUE,sep = ",", quote = "\"'",na.strings = "NA",dec = "." )
+testing <- read.csv("pml-testing.csv",header = TRUE,sep = ",", quote = "\"'",na.strings = "NA",dec = "." )
+```
+
+The first step is to remove the window summary data since it is not defined for the test step.In addition, all  the none critical parameters not correlated to the activity are removed such as time, window numbers. The resulting data set has 52 numberical culomns. 
+
+```{r}
+#data preparation
+index <- (training$new_window == "yes")
+training_set <- training[-index,]
+# integrated parameters
+training_ave <- training[index,]
+colremove <- c(1:7,11:36,50:59,69:83,87:101,103:112,125:139,141:150)                     
+training_set <- training_set[,-colremove]
+testing_set <- testing[,-colremove]
+```
+
+For first level analysis, a box plot of the different parameters as a function of the classe outcome can help to detect any issues with the data.
+As an examplem the magnet_arm_x was plaotting as a function of the classes.
+
+```{r}
+plot(training_set$magnet_arm_x ~ training_set$classe)
+```
+
+# Preprocessing of data 
+
+Due to the number of numerical variables, a singular value decomposition was tried  to see if we can reduce the number of regressor. the cummulated
+
+```{r echo=FALSE}
+ssd <- svd(training_set[,-52])
+b <- 0
+cummul_d <- NULL
+dsum <- sum(ssd$d)
+for(i in ssd$d){ 
+  b <- b + i/dsum
+  cummul_d <- c(cummul_d, b)
+}
+```
+
+The following plot of the residual variance as a function of the number of variables.
+
+```{r}
+plot(log10(1.0-cummul_d), ylab = "log_10(1 - cummulated variance of system)",xlab = "number of variables")
+```
+
+The decay of the diagonal factor is very slow. To maintain 99% of the variance of the system, we need to include up 30 parameters. this suggests that principal component analysis method might not provide an improvement for the model.
+Other simple preproceesing methods were used and tested to see if the model accuracy ws improved. Unfortunately, no simple preprocessing was found effective.
+
+## Model development.
+
+The training set is split between a training set and a  test set in order to evaluate the accuracy of the modeland to pick the best model. 75% of the set is used to train the model.
+
+
+```{r echo=FALSE}
+set.seed(3433)
+inTrain <- createDataPartition(training_set$classe, p = 3/4, list = FALSE)
+training_d<- training_set[ inTrain,]
+training_t<- training_set[-inTrain,]
+
+```
+
+The outcome is a factor so we need to choice a model for categorization. A standard linear regression model cannot be used.
+A CARE tree analysis was tested and seems to provide the best accurary. 
+
+```{r echo=FALSE}
+modelFit <- train(classe ~ .,method = "rpart",data = training_d)
+```
+
+
+Different method of pre-processing the data was tested (pca, BoxCox) to see if the accuracy of the model could be improved. 
+
+
+## verification of the accuracy of the model 
+
+The training set split is used to evaluate the accuracy of the model.
+This training set has seen the same preprocess.  The outcome of the prediction using the training set is compared to the actual values.
+```{r}
+confusionMatrix(training_t$classe,predict(modelFit,training_t))
+#confusionMatrix(training_t$classe,predict(modelFit,testPC))
+modelFit$finalModel
+```
+The accuracy of the model is around 50%. This is not very high. However, with 5 different categories, a random assessement would be 20%.
+
+# predicting the test set
+
+the final step is to use our current model for predicting the values on a new set of data.
+
+the result of the prediction is given by 
+```{r}
+predict(modelFit,testing_set)
+```
+
+# reference
+
+[1] Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6
