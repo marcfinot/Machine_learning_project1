@@ -62,9 +62,12 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 ## 3.1.2</code></pre>
 <pre><code>## Warning: package 'kernlab' was built under R version 3.1.2</code></pre>
 <pre><code>## Warning: package 'e1071' was built under R version 3.1.2</code></pre>
+<pre><code>## Warning: package 'randomForest' was built under R version 3.1.2</code></pre>
+<pre><code>## randomForest 4.6-10
+## Type rfNews() to see new features/changes/bug fixes.</code></pre>
 <div id="executive-summary" class="section level2">
 <h2>executive summary</h2>
-<p>This report presents the build-up of a model based on a training set of several person exercising to predict the type of movement they are doing based on accelerometer data. The data used in this analysis is from groupware project on Human Activity Recognition [1]. The outcome is the column “classe” which is a factor of 5 levels, from A to E corresponding to a type of activity. The model chosen for this prediction was a CARE tree prediction without preprocessing of the data except some simple data cleaning. The accuracy of the model was around 50% on a subset of the training set for testing.</p>
+<p>This report presents the build-up of a model based on a training set of several person exercising to predict the type of movement they are doing based on accelerometer data. The data used in this analysis is from groupware project on Human Activity Recognition [1]. The outcome is the column “classe” which is a factor of 5 levels, from A to E corresponding to a type of activity. The model chosen for this prediction was a random forest prediction without preprocessing of the data except some simple data cleaning. The accuracy of the model was around 99% on a subset of the training set for testing.</p>
 </div>
 <div id="data-exploration-and-data-cleaning" class="section level2">
 <h2>Data exploration and data cleaning</h2>
@@ -94,8 +97,8 @@ testing_set &lt;- testing[,-colremove]</code></pre>
 <div id="model-development." class="section level2">
 <h2>Model development.</h2>
 <p>The training set is split between a training set and a test set in order to evaluate the accuracy of the modeland to pick the best model. 75% of the set is used to train the model.</p>
-<p>The outcome is a factor so we need to choice a model for categorization. A standard linear regression model cannot be used. A CARE tree analysis was tested and seems to provide the best accurary.</p>
-<pre><code>## Loading required package: rpart</code></pre>
+<p>The outcome is a factor so we need to choice a model for categorization. A standard linear regression model cannot be used. A random forest method was tested and seems to provide the best accurary.</p>
+<pre class="r"><code>modelFit &lt;- randomForest(classe ~ ., data = training_d)</code></pre>
 <p>Different method of pre-processing the data was tested (pca, BoxCox) to see if the accuracy of the model could be improved.</p>
 </div>
 <div id="verification-of-the-accuracy-of-the-model" class="section level2">
@@ -105,51 +108,38 @@ testing_set &lt;- testing[,-colremove]</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
 ##           Reference
-## Prediction    A    B    C    D    E
-##          A 1265   16  111    0    2
-##          B  415  296  238    0    0
-##          C  412   25  418    0    0
-##          D  366  135  303    0    0
-##          E  135  124  242    0  400
+## Prediction   A   B   C   D   E
+##          A 557   0   0   0   0
+##          B   0 379   0   0   0
+##          C   0   2 340   0   0
+##          D   0   0   3 318   0
+##          E   0   0   0   1 359
 ## 
 ## Overall Statistics
 ##                                           
-##                Accuracy : 0.4852          
-##                  95% CI : (0.4711, 0.4993)
-##     No Information Rate : 0.5289          
-##     P-Value [Acc &gt; NIR] : 1               
+##                Accuracy : 0.9969          
+##                  95% CI : (0.9933, 0.9989)
+##     No Information Rate : 0.2843          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.3265          
+##                   Kappa : 0.9961          
 ##  Mcnemar's Test P-Value : NA              
 ## 
 ## Statistics by Class:
 ## 
 ##                      Class: A Class: B Class: C Class: D Class: E
-## Sensitivity            0.4879  0.49664  0.31860       NA  0.99502
-## Specificity            0.9442  0.84839  0.87831    0.836  0.88869
-## Pos Pred Value         0.9075  0.31191  0.48889       NA  0.44395
-## Neg Pred Value         0.6215  0.92413  0.77915       NA  0.99950
-## Prevalence             0.5289  0.12156  0.26759    0.000  0.08199
-## Detection Rate         0.2580  0.06037  0.08525    0.000  0.08158
-## Detection Prevalence   0.2843  0.19355  0.17438    0.164  0.18377
-## Balanced Accuracy      0.7160  0.67252  0.59845       NA  0.94186</code></pre>
+## Sensitivity            1.0000   0.9948   0.9913   0.9969   1.0000
+## Specificity            1.0000   1.0000   0.9988   0.9982   0.9994
+## Pos Pred Value         1.0000   1.0000   0.9942   0.9907   0.9972
+## Neg Pred Value         1.0000   0.9987   0.9981   0.9994   1.0000
+## Prevalence             0.2843   0.1945   0.1751   0.1628   0.1833
+## Detection Rate         0.2843   0.1935   0.1736   0.1623   0.1833
+## Detection Prevalence   0.2843   0.1935   0.1746   0.1639   0.1838
+## Balanced Accuracy      1.0000   0.9974   0.9950   0.9975   0.9997</code></pre>
 <pre class="r"><code>#confusionMatrix(training_t$classe,predict(modelFit,testPC))
 modelFit$finalModel</code></pre>
-<pre><code>## n= 14718 
-## 
-## node), split, n, loss, yval, (yprob)
-##       * denotes terminal node
-## 
-##  1) root 14718 10533 A (0.28 0.19 0.17 0.16 0.18)  
-##    2) roll_belt&lt; 130.5 13475  9302 A (0.31 0.21 0.19 0.18 0.11)  
-##      4) pitch_forearm&lt; -33.65 1180    10 A (0.99 0.0085 0 0 0) *
-##      5) pitch_forearm&gt;=-33.65 12295  9292 A (0.24 0.23 0.21 0.2 0.12)  
-##       10) magnet_dumbbell_y&lt; 439.5 10362  7424 A (0.28 0.18 0.24 0.19 0.11)  
-##         20) roll_forearm&lt; 123.5 6454  3808 A (0.41 0.18 0.18 0.17 0.06) *
-##         21) roll_forearm&gt;=123.5 3908  2599 C (0.075 0.18 0.33 0.23 0.19) *
-##       11) magnet_dumbbell_y&gt;=439.5 1933   943 B (0.034 0.51 0.043 0.22 0.19) *
-##    3) roll_belt&gt;=130.5 1243    12 E (0.0097 0 0 0 0.99) *</code></pre>
-<p>The accuracy of the model is around 50%. This is not very high. However, with 5 different categories, a random assessement would be 20%.</p>
+<pre><code>## NULL</code></pre>
+<p>The accuracy of the model is around 99%.</p>
 </div>
 </div>
 <div id="predicting-the-test-set" class="section level1">
@@ -157,7 +147,8 @@ modelFit$finalModel</code></pre>
 <p>the final step is to use our current model for predicting the values on a new set of data.</p>
 <p>the result of the prediction is given by</p>
 <pre class="r"><code>predict(modelFit,testing_set)</code></pre>
-<pre><code>##  [1] C A C A A C C A A A C C C A C A A A A C
+<pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
+##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
 ## Levels: A B C D E</code></pre>
 </div>
 <div id="reference" class="section level1">
